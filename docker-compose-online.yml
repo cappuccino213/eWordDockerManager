@@ -1,0 +1,12 @@
+services:
+  ewordimcis-apiservice:
+    image: 192.168.1.33:8080/ewordimcis/ewordimcis-apice-gen20250124@sha256:0f3b525ae9a38ecd0b74453c494194cf8209658df612f13756f0af4226b5b81b
+    container_name: ewordimcis-apiservice-v3.0.2
+    ports:
+    - 9050:9050
+#    volumes:
+#    # 持久化数据，卷映射，需要提前创建映射卷docker volume create imcis-logs
+#    - imcis-logs:/app/logs
+#    # 配置文件，需在宿主机提前创建
+#    - ./imcis-config/appsettings.json:/app/appsettings.json
+#    - ./imcis-config/log4net.config:/app/log4net.config

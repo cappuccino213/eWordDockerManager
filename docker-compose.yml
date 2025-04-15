@@ -1,0 +1,12 @@
+services:
+  ewordimcis-apiservice:
+    image: ewordimcis-apiservice-gen20250124:v3.0.2-x86-64
+    container_name: ewordimcis-apiservice-v3.0.2
+    ports:
+    - 9050:9050
+#    volumes:
+#    # 持久化数据，卷映射，需要提前创建映射卷docker volume create imcis-logs
+#    - imcis-logs:/app/logs
+#    # 配置文件，需在宿主机提前创建
+#    - ./imcis-config/appsettings.json:/app/appsettings.json
+#    - ./imcis-config/log4net.config:/app/log4net.config
