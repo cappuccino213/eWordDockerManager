@@ -1,7 +1,8 @@
 #!/bin/bash
 # author：zhangyp
 # function：Docker Compose应用部署管理工具
-# date：2025年2月28日 16:34:57
+# create_date：2025年2月28日 16:34:57
+# update_time：2025年4月16日 10:58:15
 
 # ***参数设置***
 # 启用严格错误检查
@@ -220,66 +221,112 @@ function uninstall_app() {
 
 # 容器管理子菜单
 function container_menu() {
+  while true; do
     echo -e "\n${magenta}>>>应用管理/容器管理>>>${reset}"
-    local containers=($(docker-compose ps --services))
-    # 换成mapfile读取容器名称
-    if [ ${#containers[@]} -eq 0 ]; then
-        echo -e "${yellow}💡 没有运行中的容器${reset}"
+    local output=$(docker-compose ps --format "table {{.ID}}\t{{.Service}}\t{{.CreatedAt}}\t{{.State}}\t{{.Ports}}" | tail -n +2)
+    if [[ -z "$output" ]]; then
+        echo -e "${yellow}💡 未查询到使用docker-compose安装的容器${reset}"
         return
     fi
 
-    echo -e "${green}编号\t容器名称${reset}"
-    for i in "${!containers[@]}"; do
-        echo -e "$((i+1))\t${containers[$i]}"
+    # 打印表头
+    echo -e "${green}编号\tCONTAINER ID\tSERVICE\t\t\tCREATED AT\t\tSTATE\t\tPORTS${reset}" # \t表示一个制表符
+
+    # 添加序号并打印每一行
+    local i=1
+    local lines=()
+    mapfile -t lines < <(echo "$output")
+    for line in "${lines[@]}"; do
+        printf "${light_green}%-${#i}s\t${line}${reset}\n" "$i"
+        ((i++))
     done
 
-    echo -n "请输入要删除的容器编号（q返回）："
+    echo -n "删除操作：直接输入容器对应编号；返回操作：b-返回上一级菜单，q-返回主菜单<< "
     read -r choice
-    if [[ "$choice" == "q" ]]; then return; fi
+    if [[ "$choice" == "b" ]]; then
+        return
+    elif [[ "$choice" == "q" ]]; then
+        trap - SIGINT
+        main_menu
+    fi
+
+    if ! [[ "$choice" =~ ^[0-9]+$ ]]; then
+        echo -e "${red}🚫无效的输入值！请重新输入。${reset}"
+        continue
+    fi
 
     local index=$((choice-1))
-    if [[ $index -ge 0 && $index -lt ${#containers[@]} ]]; then
-        echo -n "确定要停止并删除 ${containers[$index]} 吗？(y/N) "
+    if [[ $index -ge 0 && $index -lt ${#lines[@]} ]]; then
+        local container_id=$(echo "${lines[$index]}" | awk '{print $1}')
+        echo -n "确定要停止并删除 $container_id 吗？(y/n) "
         read -r confirm
         if [[ $confirm =~ ^[Yy]$ ]]; then
-            docker-compose rm -sfv "${containers[$index]}"
+            docker-compose rm -sfv "$container_id"
             echo -e "${green}✔ 操作完成${reset}"
         fi
     else
-        echo -e "${red}🚫无效的编号！${reset}"
+        echo -e "${red}🚫无效的输入值！请重新输入。${reset}"
+        continue
     fi
+  done
 }
+
+
 
 # 镜像管理子菜单
 function image_menu() {
+  while true; do
     echo -e "\n${magenta}>>>应用管理/镜像管理>>>${reset}"
-    local images=($(docker images --format "{{.Repository}}:{{.Tag}}"))
-    if [ ${#images[@]} -eq 0 ]; then
+    local output=$(docker images --format "table {{.ID}}\t{{.Size}}\t{{.Repository}}\t{{.Tag}}" | tail -n +2)
+    if [[ -z "$output" ]]; then
         echo -e "${yellow}💡 没有可用镜像${reset}"
         return
     fi
 
-    echo -e "${green}编号\t镜像名称${reset}"
-    for i in "${!images[@]}"; do
-        echo -e "$((i+1))\t${images[$i]}"
+    # 打印表头
+    echo -e "${green}编号\tIMAGE ID\tSIZE\t\t\tREPOSITORY\t\t\tTAG${reset}"
+
+    # 使用 mapfile 直接将输出存储到数组中
+    local lines=()
+    mapfile -t lines < <(echo "$output")
+
+    # 添加序号并打印每一行
+    local i=1
+    for line in "${lines[@]}"; do
+        printf "${light_green}%-${#i}s\t${line}${reset}\n" "$i"
+        ((i++))
     done
 
-    echo -n "请输入要删除的编号（q返回）："
+    echo -n "删除操作：直接输入镜像对应编号；返回操作：b-返回上一级菜单，q-返回主菜单<< "
     read -r choice
-    if [[ "$choice" == "q" ]]; then return; fi
+    if [[ "$choice" == "b" ]]; then
+        return
+    elif [[ "$choice" == "q" ]]; then
+        trap - SIGINT
+        main_menu
+    fi
+
+    if ! [[ "$choice" =~ ^[0-9]+$ ]]; then
+        echo -e "${red}🚫无效的输入值！请重新输入。${reset}"
+        return
+    fi
 
     local index=$((choice-1))
-    if [[ $index -ge 0 && $index -lt ${#images[@]} ]]; then
-        echo -n "确定要删除 ${images[$index]} 吗？(y/N) "
+    if [[ $index -ge 0 && $index -lt ${#lines[@]} ]]; then
+        local image_info=$(echo "${lines[$index]}" | awk '{print $3":"$4}') # 根据显示的列数取3和4列的数据
+        echo -n "确定要删除 $image_info 吗？(y/n) "
         read -r confirm
         if [[ $confirm =~ ^[Yy]$ ]]; then
-            docker rmi -f "${images[$index]}"
+            docker rmi -f "$image_info"
             echo -e "${green}✔ 镜像已删除${reset}"
         fi
     else
-        echo -e "${red}🚫无效的编号！${reset}"
+        echo -e "${red}🚫无效的输入值！请重新输入。${reset}"
     fi
+  done
 }
+
+
 
 # -应用管理-
 function app_manage() {
@@ -318,7 +365,7 @@ function main_menu() {
             2) uninstall_app ;;
             3) app_manage ;;
             q) echo -e "${blue}再见,期待再次使用！${reset}"; exit 0 ;;
-            *) echo -e "${red}🚫无效的编号！${reset}" ;;
+            *) echo -e "${red}🚫无效的输入值！${reset}" ;;
         esac
     done
 }
